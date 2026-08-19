@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { wrapHandler } = require('../middleware/wrapper');
 const { success } = require('../utils/response');
 const { validate, schemas } = require('../validation/schemas');
-const { BadRequestError } = require('../utils/errors');
+const { BadRequestError, UnauthorizedError } = require('../utils/errors');
 const cartsRepository = require('../repositories/cartsRepository');
 const productsRepository = require('../repositories/productsRepository');
 const ordersRepository = require('../repositories/ordersRepository');
@@ -14,6 +14,11 @@ const checkout = wrapHandler(
   async (event) => {
     const { shippingAddress } = validate(schemas.checkout, event.body || {});
     const { userId } = event.user;
+
+    const user = await usersRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedError('Tu sesión ya no es válida, por favor inicia sesión de nuevo');
+    }
 
     const cart = await cartsRepository.getCart(userId);
     if (!cart.items.length) {
@@ -39,7 +44,6 @@ const checkout = wrapHandler(
     await ordersRepository.createOrder(order);
     await cartsRepository.clearCart(userId);
 
-    const user = await usersRepository.findById(userId);
     const emailResult = await sendOrderConfirmation({ user, order });
 
     logger.info('Checkout completado', { userId, orderId: order.orderId, total });

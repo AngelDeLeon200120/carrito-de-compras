@@ -12,12 +12,12 @@ const initialState = {
 
 export const fetchProducts = createAsyncThunk(
   'products/fetch',
-  async ({ category, cursor } = {}, { rejectWithValue }) => {
+  async ({ category, cursor, direction } = {}, { rejectWithValue }) => {
     try {
       const { data } = await apiClient.get('/products', {
         params: { category: category || undefined, cursor: cursor || undefined, limit: 8 },
       });
-      return { ...data, category: category || '', cursor: cursor || null };
+      return { ...data, cursor: cursor || null, direction };
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -44,8 +44,10 @@ const productsSlice = createSlice({
         state.status = 'succeeded';
         state.items = action.payload.items;
         state.nextCursor = action.payload.nextCursor;
-        if (action.payload.cursor) {
+        if (action.payload.direction === 'next' && action.payload.cursor) {
           state.cursorHistory.push(action.payload.cursor);
+        } else if (action.payload.direction === 'prev') {
+          state.cursorHistory.pop();
         }
       })
       .addCase(fetchProducts.rejected, (state, action) => {

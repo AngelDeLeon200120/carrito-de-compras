@@ -23,15 +23,16 @@ export default function ProductsPage() {
 
   const handleNextPage = () => {
     if (nextCursor) {
-      dispatch(fetchProducts({ category, cursor: nextCursor }));
+      dispatch(fetchProducts({ category, cursor: nextCursor, direction: 'next' }));
     }
   };
 
   const handlePrevPage = () => {
-    const history = [...cursorHistory];
-    history.pop();
-    const previousCursor = history[history.length - 1] || undefined;
-    dispatch(fetchProducts({ category, cursor: previousCursor }));
+    // cursorHistory[i] es el cursor usado para llegar a la página i+2.
+    // Para retroceder una página necesitamos el cursor anterior al actual
+    // (o ninguno si estamos volviendo a la primera página).
+    const previousCursor = cursorHistory[cursorHistory.length - 2] || undefined;
+    dispatch(fetchProducts({ category, cursor: previousCursor, direction: 'prev' }));
   };
 
   return (

@@ -28,6 +28,11 @@ async function getTransporter() {
       port: 587,
       secure: false,
       auth: { user: testAccount.user, pass: testAccount.pass },
+      // Algunas redes corporativas/antivirus interceptan TLS con un certificado
+      // propio que Node no reconoce ("self-signed certificate in certificate
+      // chain"). Esta cuenta es solo de pruebas (Ethereal), así que se relaja
+      // la validación del certificado únicamente en esta rama.
+      tls: { rejectUnauthorized: false },
     });
   })();
 
