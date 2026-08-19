@@ -1,0 +1,211 @@
+service: sports-cart-backend
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 20
+  environment:
+    JWT_SECRET: ${env:JWT_SECRET, 'super-secret-dev-key-change-me'}
+    JWT_EXPIRES_IN: ${env:JWT_EXPIRES_IN, '2h'}
+    DYNAMODB_ENDPOINT: ${env:DYNAMODB_ENDPOINT, 'http://localhost:8000'}
+    PRODUCTS_TABLE: ${self:custom.productsTable}
+    CARTS_TABLE: ${self:custom.cartsTable}
+    ORDERS_TABLE: ${self:custom.ordersTable}
+    USERS_TABLE: ${self:custom.usersTable}
+    SMTP_HOST: ${env:SMTP_HOST, ''}
+    SMTP_PORT: ${env:SMTP_PORT, ''}
+    SMTP_USER: ${env:SMTP_USER, ''}
+    SMTP_PASS: ${env:SMTP_PASS, ''}
+    MAIL_FROM: ${env:MAIL_FROM, 'Sports Cart <no-reply@sportscart.dev>'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt ProductsTable.Arn
+            - !GetAtt CartsTable.Arn
+            - !GetAtt OrdersTable.Arn
+            - !GetAtt UsersTable.Arn
+            - !Sub '${ProductsTable.Arn}/index/*'
+            - !Sub '${UsersTable.Arn}/index/*'
+
+custom:
+  productsTable: Products-${self:provider.stage}
+  cartsTable: Carts-${self:provider.stage}
+  ordersTable: Orders-${self:provider.stage}
+  usersTable: Users-${self:provider.stage}
+  serverless-offline:
+    httpPort: 3000
+    noPrependStageInUrl: true
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: false
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+    seed:
+      products:
+        sources:
+          - table: ${self:custom.productsTable}
+            sources: [./scripts/products-seed.json]
+
+plugins:
+  - serverless-dynamodb
+  - serverless-offline
+
+functions:
+  authRegister:
+    handler: src/handlers/auth.register
+    events:
+      - http:
+          path: /auth/register
+          method: post
+          cors: true
+  authLogin:
+    handler: src/handlers/auth.login
+    events:
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+
+  productsList:
+    handler: src/handlers/products.list
+    events:
+      - http:
+          path: /products
+          method: get
+          cors: true
+  productsGet:
+    handler: src/handlers/products.getById
+    events:
+      - http:
+          path: /products/{id}
+          method: get
+          cors: true
+
+  cartGet:
+    handler: src/handlers/cart.getCart
+    events:
+      - http:
+          path: /cart
+          method: get
+          cors: true
+  cartAddItem:
+    handler: src/handlers/cart.addItem
+    events:
+      - http:
+          path: /cart/items
+          method: post
+          cors: true
+  cartRemoveItem:
+    handler: src/handlers/cart.removeItem
+    events:
+      - http:
+          path: /cart/items/{productId}
+          method: delete
+          cors: true
+
+  checkout:
+    handler: src/handlers/checkout.checkout
+    events:
+      - http:
+          path: /checkout
+          method: post
+          cors: true
+
+  ordersHistory:
+    handler: src/handlers/orders.history
+    events:
+      - http:
+          path: /orders
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.productsTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+          - AttributeName: category
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: category-index
+            KeySchema:
+              - AttributeName: category
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    CartsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.cartsTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.ordersTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: orderId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: orderId
+            KeyType: RANGE
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.usersTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: email-index
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL

@@ -1,0 +1,29 @@
+{
+  "name": "sports-cart-backend",
+  "version": "1.0.0",
+  "description": "API REST serverless (simulada con serverless-offline + DynamoDB Local) para el carrito de compras de articulos deportivos",
+  "main": "src/handlers/index.js",
+  "scripts": {
+    "dynamodb:install": "serverless dynamodb install",
+    "seed": "node scripts/seed.js",
+    "dev": "serverless offline start --stage dev",
+    "start": "npm run dev"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "joi": "^17.13.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.13",
+    "uuid": "^9.0.1",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.39.0",
+    "serverless-dynamodb": "^0.2.53",
+    "serverless-offline": "^13.6.0"
+  }
+}
